@@ -12,10 +12,16 @@ import type {
   Task,
   StreakData,
   XPData,
+  Battle,
+  Review,
 } from '../types/index';
 import { STORAGE_KEYS } from '../constants/index';
 import { saveData, loadData } from '../utils/storage';
-import { initializeStreak, updateStreakAfterActivity } from '../utils/streak';
+import {
+  initializeStreak,
+  updateStreakAfterActivity,
+  getStreakMultiplier,
+} from '../utils/streak';
 import { initializeXPData, addXPAndUpdateLevel } from '../utils/xp';
 
 // Initial state
@@ -24,6 +30,8 @@ const initialAppState: AppState = {
   tasks: [],
   streakData: {},
   xpData: {},
+  battles: [],
+  reviews: [],
   currentUserId: null,
 };
 
@@ -32,7 +40,9 @@ type AppAction =
   | { type: 'ADD_USER'; payload: User }
   | { type: 'SET_CURRENT_USER'; payload: string }
   | { type: 'ADD_TASK'; payload: Task }
-  | { type: 'COMPLETE_TASK'; payload: { taskId: string; userId: string } }
+  | { type: 'COMPLETE_TASK'; payload: { taskId: string } }
+  | { type: 'ADD_BATTLE'; payload: Battle }
+  | { type: 'ADD_REVIEW'; payload: Review }
   | { type: 'UPDATE_STREAK'; payload: { userId: string; streakData: StreakData } }
   | { type: 'UPDATE_XP'; payload: { userId: string; xpData: XPData } }
   | { type: 'LOAD_STATE'; payload: AppState };
@@ -74,25 +84,20 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     }
 
     case 'COMPLETE_TASK': {
-      const { taskId, userId } = action.payload;
+      const { taskId } = action.payload;
       const task = state.tasks.find((t) => t.id === taskId);
-
       if (!task || task.completed) return state;
 
-      // Update task
+      const userId = task.userId;
       const updatedTasks = state.tasks.map((t) =>
         t.id === taskId ? { ...t, completed: true, completedAt: new Date().toISOString() } : t
       );
 
-      // Update streak
-      const currentStreak = state.streakData[userId];
-      const updatedStreak = currentStreak
-        ? updateStreakAfterActivity(currentStreak)
-        : initializeStreak(userId);
+      const currentStreak = state.streakData[userId] || initializeStreak(userId);
+      const updatedStreak = updateStreakAfterActivity(currentStreak);
+      const streakMultiplier = getStreakMultiplier(updatedStreak.currentStreak);
 
-      // Update XP with streak bonus
       const currentXP = state.xpData[userId] || initializeXPData(userId);
-      const streakMultiplier = updatedStreak.currentStreak > 0 ? 1.1 : 1.0; // Simple bonus
       const updatedXP = addXPAndUpdateLevel(currentXP, task.xpReward, streakMultiplier);
 
       return {
@@ -106,6 +111,20 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           ...state.xpData,
           [userId]: updatedXP,
         },
+      };
+    }
+
+    case 'ADD_BATTLE': {
+      return {
+        ...state,
+        battles: [...state.battles, action.payload],
+      };
+    }
+
+    case 'ADD_REVIEW': {
+      return {
+        ...state,
+        reviews: [...state.reviews, action.payload],
       };
     }
 
@@ -158,17 +177,34 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     saveData(STORAGE_KEYS.APP_STATE, state);
   }, [state]);
 
+  // Ensure there is always at least one current user for task tracking
+  useEffect(() => {
+    if (state.users.length === 0) {
+      const defaultUser = {
+        id: crypto.randomUUID(),
+        name: 'Embedded Operator',
+        specialization: 'embedded' as const,
+        createdAt: new Date().toISOString(),
+      };
+
+      dispatch({ type: 'ADD_USER', payload: defaultUser });
+      dispatch({ type: 'SET_CURRENT_USER', payload: defaultUser.id });
+      return;
+    }
+
+    if (!state.currentUserId && state.users.length > 0) {
+      dispatch({ type: 'SET_CURRENT_USER', payload: state.users[0].id });
+    }
+  }, [state.currentUserId, state.users.length]);
+
   const contextValue: AppContextType = {
     state,
     addUser: (user: User) => dispatch({ type: 'ADD_USER', payload: user }),
     setCurrentUser: (userId: string) => dispatch({ type: 'SET_CURRENT_USER', payload: userId }),
     addTask: (task: Task) => dispatch({ type: 'ADD_TASK', payload: task }),
-    completeTask: (taskId: string, userId: string) =>
-      dispatch({ type: 'COMPLETE_TASK', payload: { taskId, userId } }),
-    updateStreak: (userId: string, streakData: StreakData) =>
-      dispatch({ type: 'UPDATE_STREAK', payload: { userId, streakData } }),
-    updateXP: (userId: string, xpData: XPData) =>
-      dispatch({ type: 'UPDATE_XP', payload: { userId, xpData } }),
+    completeTask: (taskId: string) => dispatch({ type: 'COMPLETE_TASK', payload: { taskId } }),
+    addBattle: (battle: Battle) => dispatch({ type: 'ADD_BATTLE', payload: battle }),
+    addReview: (review: Review) => dispatch({ type: 'ADD_REVIEW', payload: review }),
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;

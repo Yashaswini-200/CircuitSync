@@ -5,3 +5,6 @@
 
 export { useApp } from './useApp';
 export { useLocalStorage } from './useLocalStorage';
+export { useTasks } from './useTasks';
+export { useStreak } from './useStreak';
+export { useXP } from './useXP';

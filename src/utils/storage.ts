@@ -50,13 +50,11 @@ export const loadData = <T>(key: string, fallback: T): T => {
       return fallback;
     }
 
-    // Parse with strict JSON validation
     const parsed = JSON.parse(item) as T;
-    return parsed;
+    return parsed ?? fallback;
   } catch (error) {
     if (error instanceof SyntaxError) {
       console.warn('loadData: Corrupted data in localStorage, using fallback', error);
-      // Attempt to remove corrupted data
       try {
         localStorage.removeItem(key);
       } catch (removeError) {
@@ -66,6 +64,35 @@ export const loadData = <T>(key: string, fallback: T): T => {
       console.error('loadData: Error loading data', error);
     }
     return fallback;
+  }
+};
+
+/**
+ * Safely load optional data from localStorage
+ * @param key - Storage key
+ * @returns Parsed data or null
+ */
+export const loadDataOrNull = <T>(key: string): T | null => {
+  try {
+    if (!key || key.trim() === '') {
+      console.warn('loadDataOrNull: Invalid key provided');
+      return null;
+    }
+
+    const item = localStorage.getItem(key);
+    if (item === null) {
+      return null;
+    }
+
+    return JSON.parse(item) as T;
+  } catch (error) {
+    console.warn('loadDataOrNull: Corrupted data or parse failure, removing key', error);
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // ignore cleanup failure
+    }
+    return null;
   }
 };
 
