@@ -9,6 +9,7 @@ import type {
   AppState,
   AppContextType,
   User,
+  UserPreferences,
   Task,
   StreakData,
   XPData,
@@ -32,9 +33,63 @@ const initialAppState: AppState = {
   tasks: [],
   streakData: {},
   xpData: {},
+  preferences: {},
   battles: [],
   reviews: [],
   currentUserId: null,
+};
+
+const defaultUserPreferences = (): UserPreferences => ({
+  theme: 'dark',
+  notificationsEnabled: true,
+});
+
+const normalizeAppState = (state: Partial<AppState>): AppState => {
+  const users = Array.isArray(state.users) ? state.users : initialAppState.users;
+  const currentUserId = typeof state.currentUserId === 'string' && users.some((u) => u.id === state.currentUserId)
+    ? state.currentUserId
+    : users.length > 0
+      ? users[0].id
+      : null;
+
+  const preferences = typeof state.preferences === 'object' && state.preferences !== null
+    ? state.preferences
+    : initialAppState.preferences;
+
+  const normalizedPreferences = users.reduce<Record<string, UserPreferences>>((acc, user) => {
+    acc[user.id] = preferences[user.id] ?? defaultUserPreferences();
+    return acc;
+  }, {});
+
+  const rawStreakData = typeof state.streakData === 'object' && state.streakData !== null ? state.streakData : initialAppState.streakData;
+  const normalizedStreakData = users.reduce<Record<string, StreakData>>((acc, user) => {
+    acc[user.id] = rawStreakData[user.id] ?? initializeStreak(user.id);
+    return acc;
+  }, {});
+
+  const rawXPData = typeof state.xpData === 'object' && state.xpData !== null ? state.xpData : initialAppState.xpData;
+  const normalizedXPData = users.reduce<Record<string, XPData>>((acc, user) => {
+    acc[user.id] = rawXPData[user.id] ?? initializeXPData(user.id);
+    return acc;
+  }, {});
+
+  return {
+    ...initialAppState,
+    ...state,
+    users,
+    tasks: Array.isArray(state.tasks) ? state.tasks : initialAppState.tasks,
+    streakData: normalizedStreakData,
+    xpData: normalizedXPData,
+    preferences: normalizedPreferences,
+    battles: Array.isArray(state.battles) ? state.battles : initialAppState.battles,
+    reviews: Array.isArray(state.reviews) ? state.reviews : initialAppState.reviews,
+    currentUserId,
+  };
+};
+
+const initAppState = (): AppState => {
+  const persistedState = loadData<AppState>(STORAGE_KEYS.APP_STATE, initialAppState);
+  return normalizeAppState(persistedState);
 };
 
 // Action types
@@ -54,7 +109,8 @@ type AppAction =
   | { type: 'UPDATE_BATTLE_SCORE'; payload: { battleId: string; userId: string; delta: number } }
   | { type: 'UPDATE_STREAK'; payload: { userId: string; streakData: StreakData } }
   | { type: 'UPDATE_XP'; payload: { userId: string; xpData: XPData } }
-  | { type: 'LOAD_STATE'; payload: AppState };
+  | { type: 'REMOVE_USER'; payload: { userId: string } }
+  | { type: 'UPDATE_USER_PREFERENCES'; payload: { userId: string; preferences: UserPreferences } };
 
 // Reducer function
 const appReducer = (state: AppState, action: AppAction): AppState => {
@@ -67,6 +123,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return {
         ...state,
         users: [...state.users, newUser],
+        currentUserId: state.currentUserId ?? newUser.id,
         streakData: {
           ...state.streakData,
           [newUser.id]: initializeStreak(newUser.id),
@@ -75,13 +132,55 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           ...state.xpData,
           [newUser.id]: initializeXPData(newUser.id),
         },
+        preferences: {
+          ...state.preferences,
+          [newUser.id]: state.preferences[newUser.id] ?? defaultUserPreferences(),
+        },
       };
     }
 
     case 'SET_CURRENT_USER': {
+      if (!state.users.some((u) => u.id === action.payload)) {
+        return state;
+      }
+
       return {
         ...state,
         currentUserId: action.payload,
+      };
+    }
+
+    case 'REMOVE_USER': {
+      const { userId } = action.payload;
+      const nextUsers = state.users.filter((u) => u.id !== userId);
+      const nextCurrentUserId = state.currentUserId === userId ? nextUsers[0]?.id ?? null : state.currentUserId;
+      const { [userId]: _, ...nextStreakData } = state.streakData;
+      const { [userId]: __, ...nextXPData } = state.xpData;
+      const { [userId]: ___, ...nextPreferences } = state.preferences;
+
+      return {
+        ...state,
+        users: nextUsers,
+        currentUserId: nextCurrentUserId,
+        streakData: nextStreakData,
+        xpData: nextXPData,
+        preferences: nextPreferences,
+      };
+    }
+
+    case 'UPDATE_USER_PREFERENCES': {
+      const { userId, preferences } = action.payload;
+      if (!state.users.some((u) => u.id === userId)) return state;
+
+      return {
+        ...state,
+        preferences: {
+          ...state.preferences,
+          [userId]: {
+            ...state.preferences[userId],
+            ...preferences,
+          },
+        },
       };
     }
 
@@ -323,10 +422,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       };
     }
 
-    case 'LOAD_STATE': {
-      return action.payload;
-    }
-
     default:
       return state;
   }
@@ -337,22 +432,14 @@ export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 // Provider component
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [state, dispatch] = useReducer(appReducer, initialAppState);
-
-  // Load state from localStorage on mount
-  useEffect(() => {
-    const savedState = loadData<AppState>(STORAGE_KEYS.APP_STATE, initialAppState);
-    if (savedState) {
-      dispatch({ type: 'LOAD_STATE', payload: savedState });
-    }
-  }, []);
+  const [state, dispatch] = useReducer(appReducer, initialAppState, initAppState);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
     saveData(STORAGE_KEYS.APP_STATE, state);
   }, [state]);
 
-  // Ensure there is always at least one current user for task tracking
+  // Ensure there is always a valid current user
   useEffect(() => {
     if (state.users.length === 0) {
       const defaultUser = {
@@ -367,7 +454,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    if (!state.currentUserId && state.users.length > 0) {
+    if (!state.currentUserId || !state.users.some((u) => u.id === state.currentUserId)) {
       dispatch({ type: 'SET_CURRENT_USER', payload: state.users[0].id });
     }
   }, [state.currentUserId, state.users.length]);
@@ -376,6 +463,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     state,
     currentUser: state.users.find((u) => u.id === state.currentUserId) ?? null,
     addUser: (user: User) => dispatch({ type: 'ADD_USER', payload: user }),
+    removeUser: (userId: string) => dispatch({ type: 'REMOVE_USER', payload: { userId } }),
+    updateUserPreferences: (userId: string, preferences: UserPreferences) =>
+      dispatch({ type: 'UPDATE_USER_PREFERENCES', payload: { userId, preferences } }),
     setCurrentUser: (userId: string) => dispatch({ type: 'SET_CURRENT_USER', payload: userId }),
     addTask: (task: Task) => dispatch({ type: 'ADD_TASK', payload: task }),
     completeTask: (taskId: string) => dispatch({ type: 'COMPLETE_TASK', payload: { taskId } }),

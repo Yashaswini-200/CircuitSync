@@ -3,9 +3,9 @@
  * Helps verify the dashboard works with real data
  */
 
-import type { User, Task } from '../types/index';
+import type { AppState, User, Task } from '../types/index';
 import { STORAGE_KEYS } from '../constants/index';
-import { saveData } from '../utils/storage';
+import { saveData, loadDataOrNull } from '../utils/storage';
 
 export const DEMO_USERS: User[] = [
   {
@@ -64,18 +64,14 @@ export const DEMO_TASKS: Task[] = [
  * Only use in development!
  */
 export const seedDemoData = (): void => {
-  const existingState = localStorage.getItem(STORAGE_KEYS.APP_STATE);
+  const existingState = loadDataOrNull<AppState>(STORAGE_KEYS.APP_STATE);
 
-  if (existingState) {
-    console.log('Demo data already exists, skipping seed');
-    return;
-  }
-
-  const demoState = {
-    users: DEMO_USERS,
-    tasks: DEMO_TASKS,
-    streakData: {
-      'user-yash': {
+  if (!existingState) {
+    const demoState = {
+      users: DEMO_USERS,
+      tasks: DEMO_TASKS,
+      streakData: {
+        'user-yash': {
           userId: 'user-yash',
           currentStreak: 3,
           longestStreak: 5,
@@ -89,26 +85,50 @@ export const seedDemoData = (): void => {
           lastActivityDate: new Date().toISOString().split('T')[0],
           totalDaysActive: 3,
         },
-    },
-    xpData: {
-      'user-yash': {
-        userId: 'user-yash',
-        totalXP: 150,
-        level: 2,
-        levelProgress: 50,
       },
-      'user-bhav': {
-        userId: 'user-bhav',
-        totalXP: 45,
-        level: 1,
-        levelProgress: 45,
+      xpData: {
+        'user-yash': {
+          userId: 'user-yash',
+          totalXP: 150,
+          level: 2,
+          levelProgress: 50,
+        },
+        'user-bhav': {
+          userId: 'user-bhav',
+          totalXP: 45,
+          level: 1,
+          levelProgress: 45,
+        },
       },
-    },
-    battles: [],
-    reviews: [],
-    currentUserId: 'user-yash',
+      preferences: {
+        'user-yash': { theme: 'dark', notificationsEnabled: true },
+        'user-bhav': { theme: 'dark', notificationsEnabled: true },
+      },
+      battles: [],
+      reviews: [],
+      currentUserId: 'user-yash',
+    };
+
+    saveData(STORAGE_KEYS.APP_STATE, demoState);
+    console.log('✓ Demo data seeded successfully');
+    return;
+  }
+
+  const missingDemoUsers = DEMO_USERS.filter(
+    (demoUser) => !existingState.users.some((savedUser) => savedUser.id === demoUser.id),
+  );
+
+  if (missingDemoUsers.length === 0) {
+    console.log('Demo data already exists, no missing users to add');
+    return;
+  }
+
+  const mergedState: AppState = {
+    ...existingState,
+    users: [...existingState.users, ...missingDemoUsers],
+    currentUserId: existingState.currentUserId || existingState.users[0]?.id || DEMO_USERS[0]?.id || null,
   };
 
-  saveData(STORAGE_KEYS.APP_STATE, demoState);
-  console.log('✓ Demo data seeded successfully');
+  saveData(STORAGE_KEYS.APP_STATE, mergedState);
+  console.log(`✓ Added ${missingDemoUsers.length} missing demo user(s)`);
 };

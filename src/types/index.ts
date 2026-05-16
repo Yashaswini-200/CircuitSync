@@ -3,7 +3,14 @@ export interface User {
   id: string;
   name: string;
   specialization: 'embedded' | 'vlsi';
+  email?: string;
+  bio?: string;
   createdAt: string; // ISO date string
+}
+
+export interface UserPreferences {
+  theme: 'dark' | 'light';
+  notificationsEnabled: boolean;
 }
 
 export type TaskCategory =
@@ -132,6 +139,7 @@ export interface AppState {
   tasks: Task[];
   streakData: { [userId: string]: StreakData };
   xpData: { [userId: string]: XPData };
+  preferences: { [userId: string]: UserPreferences };
   battles: Battle[];
   reviews: Review[];
   currentUserId: string | null;
@@ -141,6 +149,8 @@ export interface AppContextType {
   state: AppState;
   currentUser?: User | null;
   addUser: (user: User) => void;
+  removeUser: (userId: string) => void;
+  updateUserPreferences: (userId: string, preferences: UserPreferences) => void;
   setCurrentUser: (userId: string) => void;
   addTask: (task: Task) => void;
   completeTask: (taskId: string) => void;
