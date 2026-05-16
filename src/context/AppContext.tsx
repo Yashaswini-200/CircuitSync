@@ -17,6 +17,7 @@ import type {
   Review,
   BattleQuestion,
   BattleAnswer,
+  RevisionSession,
 } from '../types/index';
 import { STORAGE_KEYS } from '../constants/index';
 import { saveData, loadData } from '../utils/storage';
@@ -36,6 +37,7 @@ const initialAppState: AppState = {
   preferences: {},
   battles: [],
   reviews: [],
+  revisionHistory: [],
   currentUserId: null,
 };
 
@@ -73,9 +75,12 @@ const normalizeAppState = (state: Partial<AppState>): AppState => {
     return acc;
   }, {});
 
+  const rawRevisionHistory = Array.isArray(state.revisionHistory) ? state.revisionHistory : initialAppState.revisionHistory;
+
   return {
     ...initialAppState,
     ...state,
+    revisionHistory: rawRevisionHistory,
     users,
     tasks: Array.isArray(state.tasks) ? state.tasks : initialAppState.tasks,
     streakData: normalizedStreakData,
@@ -104,6 +109,7 @@ type AppAction =
   | { type: 'MARK_QUESTION_SOLVED'; payload: { battleId: string; questionId: string; solvedBy: string } }
   | { type: 'COMPLETE_BATTLE'; payload: { battleId: string; winnerId: string } }
   | { type: 'ADD_REVIEW'; payload: Review }
+  | { type: 'ADD_REVISION_SESSION'; payload: RevisionSession }
   | { type: 'ADD_PARTICIPANT_TO_BATTLE'; payload: { battleId: string; userId: string } }
   | { type: 'RECORD_BATTLE_EVENT'; payload: { battleId: string; event: string; userId?: string; payload?: any } }
   | { type: 'UPDATE_BATTLE_SCORE'; payload: { battleId: string; userId: string; delta: number } }
@@ -402,6 +408,28 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       };
     }
 
+    case 'ADD_REVISION_SESSION': {
+      const session = action.payload;
+      const currentStreak = state.streakData[session.userId] || initializeStreak(session.userId);
+      const updatedStreak = updateStreakAfterActivity(currentStreak);
+      const streakMultiplier = getStreakMultiplier(updatedStreak.currentStreak);
+      const currentXP = state.xpData[session.userId] || initializeXPData(session.userId);
+      const updatedXP = addXPAndUpdateLevel(currentXP, session.xpEarned, streakMultiplier);
+
+      return {
+        ...state,
+        revisionHistory: [...state.revisionHistory, session],
+        streakData: {
+          ...state.streakData,
+          [session.userId]: updatedStreak,
+        },
+        xpData: {
+          ...state.xpData,
+          [session.userId]: updatedXP,
+        },
+      };
+    }
+
     case 'UPDATE_STREAK': {
       return {
         ...state,
@@ -479,6 +507,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     completeBattle: (battleId: string, winnerId: string) =>
       dispatch({ type: 'COMPLETE_BATTLE', payload: { battleId, winnerId } }),
     addReview: (review: Review) => dispatch({ type: 'ADD_REVIEW', payload: review }),
+    addRevisionSession: (session: RevisionSession) =>
+      dispatch({ type: 'ADD_REVISION_SESSION', payload: session }),
     addParticipantToBattle: (battleId: string, userId: string) =>
       dispatch({ type: 'ADD_PARTICIPANT_TO_BATTLE', payload: { battleId, userId } }),
     recordBattleEvent: (battleId: string, event: string, userId?: string, payload?: any) =>

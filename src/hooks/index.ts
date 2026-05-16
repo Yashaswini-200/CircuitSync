@@ -10,3 +10,4 @@ export { useStreak } from './useStreak';
 export { useXP } from './useXP';
 export { useBattles } from './useBattles';
 export { useCurrentUser } from './useCurrentUser';
+export { useRevisionHistory } from './useRevisionHistory';

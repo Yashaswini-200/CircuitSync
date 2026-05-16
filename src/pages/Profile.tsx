@@ -1,12 +1,13 @@
 import { MainLayout } from '../layouts/MainLayout';
 import { Card } from '../components/Card';
-import { useCurrentUser, useTasks, useStreak, useXP } from '../hooks';
+import { useCurrentUser, useTasks, useStreak, useXP, useRevisionHistory } from '../hooks';
 
 const Profile = () => {
   const { currentUser, isGuest } = useCurrentUser();
   const { tasks, completedTasks } = useTasks();
   const { streak, isAtRisk } = useStreak();
   const { xpData, levelTitle } = useXP();
+  const { totalSessions, averageAccuracy, recentWeakTopics } = useRevisionHistory();
 
   if (isGuest || !currentUser) {
     return (
@@ -56,6 +57,23 @@ const Profile = () => {
               <Card title="Tasks" accent="orange">
                 <div className="mt-2 text-xl text-white">{tasks.length}</div>
                 <div className="text-sm text-gray-400">{completedTasks.length} completed</div>
+              </Card>
+            </div>
+            <div className="mt-6">
+              <Card title="Revision Lab" accent="cyan">
+                <div className="space-y-3 text-sm text-gray-300">
+                  <div className="flex justify-between">
+                    <span>Sessions</span>
+                    <span>{totalSessions}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Avg accuracy</span>
+                    <span>{averageAccuracy}%</span>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    Weak topics: {recentWeakTopics.length > 0 ? recentWeakTopics.join(', ') : 'None yet'}
+                  </div>
+                </div>
               </Card>
             </div>
           </div>

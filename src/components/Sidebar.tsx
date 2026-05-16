@@ -61,9 +61,19 @@ export const Sidebar = ({ mobileOpen, onClose }: SidebarProps) => {
         </nav>
 
         <div className="border-t border-cyan-500/20 p-4 space-y-2">
-          <button className="w-full rounded-2xl px-4 py-3 text-left text-sm text-gray-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors">
-            📚 Help Center
-          </button>
+          <NavLink
+            to="/revision-lab"
+            className={({ isActive }) =>
+              `w-full block rounded-2xl px-4 py-3 text-left text-sm transition duration-200 ${
+                isActive
+                  ? 'bg-cyan-500/20 border border-cyan-500/50 text-cyan-300 shadow-neon-cyan'
+                  : 'text-gray-400 hover:text-cyan-300 hover:bg-cyan-500/10'
+              }`
+            }
+            onClick={onClose}
+          >
+            🔬 Revision Lab
+          </NavLink>
           <NavLink
             to="/profile"
             className="w-full block rounded-2xl px-4 py-3 text-left text-sm text-gray-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors"

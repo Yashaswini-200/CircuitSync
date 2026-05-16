@@ -5,13 +5,14 @@
 import { MainLayout } from '../layouts/MainLayout';
 import { Card } from '../components/Card';
 import { PageShell } from '../components/PageShell';
-import { useTasks, useStreak, useXP } from '../hooks';
+import { useTasks, useStreak, useXP, useRevisionHistory } from '../hooks';
 import { daysBetween, getTodayDateString } from '../utils/streak';
 
 const Dashboard = () => {
   const { tasks, completedTasks, pendingTasks } = useTasks();
   const { streak, isAtRisk } = useStreak();
   const { xpData, levelTitle, nextLevelXP } = useXP();
+  const { totalSessions, averageAccuracy, recentWeakTopics } = useRevisionHistory();
 
   const today = getTodayDateString();
   const completedThisWeek = completedTasks.filter((task) => {
@@ -109,48 +110,41 @@ const Dashboard = () => {
         </Card>
 
         <Card
-          icon="⚔️"
-          title="Competitive Battles"
-          subtitle="Battle status"
+          icon="⚡"
+          title="Revision Readiness"
+          subtitle="Lab progress"
           accent="purple"
         >
-          <div className="mt-4 space-y-3">
-            <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-              <p className="text-sm text-purple-300 font-medium">Battle system is ready for your next challenge.</p>
-              <p className="text-xs text-gray-500 mt-1">Track wins and XP when head-to-head mode is live.</p>
-            </div>
+          <div className="mt-4 space-y-3 text-sm text-gray-300">
+            <p>
+              {totalSessions > 0
+                ? `You have completed ${totalSessions} revision session${totalSessions === 1 ? '' : 's'}.`
+                : 'Launch your first revision session in the Lab to build momentum.'}
+            </p>
+            <p>
+              Average recall accuracy: <span className="font-semibold text-white">{averageAccuracy}%</span>
+            </p>
+            <p>
+              Top weak topics: {recentWeakTopics.length > 0 ? recentWeakTopics.join(', ') : 'None yet — start practicing to find your gaps.'}
+            </p>
           </div>
         </Card>
       </div>
 
-      {/* Leaderboard Preview */}
       <Card
-        icon="👥"
-        title="Leaderboard Top 5"
-        subtitle="This week"
+        icon="🧭"
+        title="Revision Focus"
+        subtitle="What matters most"
         accent="green"
       >
-        <div className="mt-4 space-y-2">
-          <div className="flex justify-between items-center text-sm py-2 border-b border-green-500/20">
-            <span className="text-gray-300">🥇 Aditya Embedded</span>
-            <span className="text-green-400 font-semibold">2,450 XP</span>
-          </div>
-          <div className="flex justify-between items-center text-sm py-2 border-b border-green-500/20">
-            <span className="text-gray-300">🥈 Priya VLSI Master</span>
-            <span className="text-green-400 font-semibold">2,100 XP</span>
-          </div>
-          <div className="flex justify-between items-center text-sm py-2 border-b border-green-500/20">
-            <span className="text-gray-300">🥉 Code Warrior</span>
-            <span className="text-green-400 font-semibold">1,950 XP</span>
-          </div>
-          <div className="flex justify-between items-center text-sm py-2 border-b border-green-500/20">
-            <span className="text-gray-300">4. Debug Master</span>
-            <span className="text-green-400 font-semibold">1,750 XP</span>
-          </div>
-          <div className="flex justify-between items-center text-sm py-2">
-            <span className="text-gray-300">5. Logic Designer</span>
-            <span className="text-green-400 font-semibold">1,650 XP</span>
-          </div>
+        <div className="mt-4 space-y-3 text-sm text-gray-300">
+          <p>Use the Lab to turn your streaks and XP into real engineering recall.</p>
+          <p>Focus on subjects that reinforce weak topics and interview confidence.</p>
+          <p>
+            {recentWeakTopics.length > 0
+              ? `Start with: ${recentWeakTopics.join(' • ')}`
+              : 'No weak topics identified yet — start a session to build the first signal.'}
+          </p>
         </div>
       </Card>
     </MainLayout>

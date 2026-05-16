@@ -59,6 +59,49 @@ export interface LevelInfo {
   maxXP: number;
 }
 
+export type RevisionSubject =
+  | 'Embedded Systems'
+  | 'VLSI'
+  | 'Digital Logic'
+  | 'DSP'
+  | 'Communication Systems'
+  | 'C Programming'
+  | 'Interview Prep';
+
+export type RevisionDifficulty = 'Easy' | 'Medium' | 'Hard';
+
+export type RevisionQuestionType = 'viva' | 'concept' | 'debugging' | 'rapid-fire' | 'mcq';
+
+export interface RevisionQuestion {
+  id: string;
+  subject: RevisionSubject;
+  topic: string;
+  difficulty: RevisionDifficulty;
+  type: RevisionQuestionType;
+  prompt: string;
+  answer: string;
+  explanation: string;
+  choices?: string[];
+  xpReward: number;
+}
+
+export interface RevisionSession {
+  id: string;
+  userId: string;
+  subject: RevisionSubject;
+  topic: string;
+  difficulty: RevisionDifficulty;
+  questionCount: number;
+  correctCount: number;
+  accuracy: number;
+  xpEarned: number;
+  weakTopics: string[];
+  strongTopics: string[];
+  questionTypes: RevisionQuestionType[];
+  startedAt: string;
+  completedAt: string;
+}
+
 export type BattleStatus = 'open' | 'active' | 'completed';
 export type BattleType = 'question-battle' | 'speed-run' | 'revision-duel';
 export type BattleTopic =
@@ -142,6 +185,7 @@ export interface AppState {
   preferences: { [userId: string]: UserPreferences };
   battles: Battle[];
   reviews: Review[];
+  revisionHistory: RevisionSession[];
   currentUserId: string | null;
 }
 
@@ -160,6 +204,7 @@ export interface AppContextType {
   markQuestionSolved: (battleId: string, questionId: string, solvedBy: string) => void;
   completeBattle: (battleId: string, winnerId: string) => void;
   addReview: (review: Review) => void;
+  addRevisionSession: (session: RevisionSession) => void;
   addParticipantToBattle: (battleId: string, userId: string) => void;
   recordBattleEvent: (battleId: string, event: string, userId?: string, payload?: any) => void;
   updateBattleScore: (battleId: string, userId: string, delta: number) => void;
