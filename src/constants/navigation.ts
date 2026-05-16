@@ -49,6 +49,14 @@ export const NAVIGATION: NavItem[] = [
     accent: 'purple',
   },
   {
+    id: 'focus-session',
+    label: 'Focus Session',
+    icon: '🧠',
+    path: '/focus-session',
+    description: 'Launch premium deep work sessions with a floating timer',
+    accent: 'cyan',
+  },
+  {
     id: 'teams',
     label: 'Teams',
     icon: '👥',
