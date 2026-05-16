@@ -41,6 +41,14 @@ export const NAVIGATION: NavItem[] = [
     accent: 'purple',
   },
   {
+    id: 'lounge',
+    label: 'Lounge',
+    icon: '🎮',
+    path: '/lounge',
+    description: 'Meet, emote, and chat in the pixel lounge',
+    accent: 'purple',
+  },
+  {
     id: 'teams',
     label: 'Teams',
     icon: '👥',

@@ -6,6 +6,7 @@ import Streaks from './pages/Streaks';
 import Battles from './pages/Battles';
 import Teams from './pages/Teams';
 import Profile from './pages/Profile';
+import Lounge from './pages/Lounge';
 import './index.css';
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
           <Route path="/streaks" element={<Streaks />} />
           <Route path="/battles" element={<Battles />} />
           <Route path="/teams" element={<Teams />} />
+          <Route path="/lounge" element={<Lounge />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

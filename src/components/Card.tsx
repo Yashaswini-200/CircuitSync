@@ -43,7 +43,7 @@ export const Card = ({
     <div
       onClick={onClick}
       className={`
-        bg-black/30 backdrop-blur-xl border rounded-xl p-6
+        relative group bg-black/30 backdrop-blur-xl border rounded-xl p-6
         transition-all duration-300 overflow-hidden
         ${accentClasses[accent]}
         ${interactive ? 'cursor-pointer hover:shadow-lg hover:shadow-current' : ''}

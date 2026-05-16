@@ -7,6 +7,7 @@ import { MainLayout } from '../layouts/MainLayout';
 import { PageShell } from '../components/PageShell';
 import { Card } from '../components/Card';
 import { TaskList } from '../components/TaskList';
+import CalendarDashboard from '../components/Calendar/CalendarDashboard';
 import { useApp, useTasks } from '../hooks';
 import type { TaskCategory, TaskEffort } from '../types/index';
 
@@ -66,6 +67,8 @@ const Tasks = () => {
             >
               <TaskList tasks={[...pendingTasks, ...completedTasks]} onToggleComplete={completeTask} />
             </Card>
+
+            <CalendarDashboard />
           </div>
 
           <div className="space-y-6">
