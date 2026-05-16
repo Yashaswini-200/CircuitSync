@@ -8,3 +8,5 @@ export { useLocalStorage } from './useLocalStorage';
 export { useTasks } from './useTasks';
 export { useStreak } from './useStreak';
 export { useXP } from './useXP';
+export { useBattles } from './useBattles';
+export { useCurrentUser } from './useCurrentUser';

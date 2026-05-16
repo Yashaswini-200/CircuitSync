@@ -52,19 +52,63 @@ export interface LevelInfo {
   maxXP: number;
 }
 
-export type BattleStatus = 'upcoming' | 'active' | 'completed';
+export type BattleStatus = 'open' | 'active' | 'completed';
 export type BattleType = 'question-battle' | 'speed-run' | 'revision-duel';
+export type BattleTopic =
+  | 'embedded-fundamentals'
+  | 'vlsi-basics'
+  | 'digital-logic'
+  | 'interview-prep'
+  | 'debugging'
+  | 'architecture'
+  | 'problem-solving';
+
+export type QuestionStatus = 'unanswered' | 'answered' | 'solved' | 'disputed';
+
+export interface BattleQuestion {
+  id: string;
+  userId: string; // who asked
+  question: string;
+  description?: string;
+  topic: BattleTopic;
+  status: QuestionStatus;
+  xpReward: number;
+  answers: BattleAnswer[];
+  createdAt: string;
+  solvedAt?: string;
+  solvedBy?: string; // user ID who solved it
+}
+
+export interface BattleAnswer {
+  id: string;
+  userId: string;
+  answer: string;
+  isCorrect: boolean;
+  votes: number;
+  createdAt: string;
+}
 
 export interface Battle {
   id: string;
   title: string;
   type: BattleType;
+  topic: BattleTopic;
   status: BattleStatus;
   participants: string[]; // user IDs
+  scores?: { [userId: string]: number };
+  history?: {
+    id: string;
+    event: string;
+    userId?: string;
+    payload?: any;
+    createdAt: string;
+  }[];
+  questions: BattleQuestion[];
   xpStake: number;
   winnerId?: string;
   createdAt: string;
   updatedAt: string;
+  endsAt?: string;
 }
 
 export type ReviewStatus = 'pending' | 'completed' | 'scheduled';
@@ -95,10 +139,18 @@ export interface AppState {
 
 export interface AppContextType {
   state: AppState;
+  currentUser?: User | null;
   addUser: (user: User) => void;
   setCurrentUser: (userId: string) => void;
   addTask: (task: Task) => void;
   completeTask: (taskId: string) => void;
   addBattle: (battle: Battle) => void;
+  addQuestionToBattle: (battleId: string, question: BattleQuestion) => void;
+  addAnswerToQuestion: (battleId: string, questionId: string, answer: BattleAnswer) => void;
+  markQuestionSolved: (battleId: string, questionId: string, solvedBy: string) => void;
+  completeBattle: (battleId: string, winnerId: string) => void;
   addReview: (review: Review) => void;
+  addParticipantToBattle: (battleId: string, userId: string) => void;
+  recordBattleEvent: (battleId: string, event: string, userId?: string, payload?: any) => void;
+  updateBattleScore: (battleId: string, userId: string, delta: number) => void;
 }

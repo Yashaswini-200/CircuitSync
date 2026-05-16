@@ -2,6 +2,8 @@
  * Top navigation bar with branding and quick actions
  */
 
+import { UserSwitcher } from './UserSwitcher';
+
 interface NavbarProps {
   onToggleSidebar: () => void;
 }
@@ -29,8 +31,8 @@ export const Navbar = ({ onToggleSidebar }: NavbarProps) => {
         <button className="hidden md:inline-flex text-cyan-400 hover:text-cyan-300 transition-colors text-sm font-medium">
           ⚙️
         </button>
-        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold shadow-neon-cyan">
-          AD
+        <div className="hidden md:flex items-center">
+          <UserSwitcher />
         </div>
       </div>
     </nav>

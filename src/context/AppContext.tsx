@@ -14,6 +14,8 @@ import type {
   XPData,
   Battle,
   Review,
+  BattleQuestion,
+  BattleAnswer,
 } from '../types/index';
 import { STORAGE_KEYS } from '../constants/index';
 import { saveData, loadData } from '../utils/storage';
@@ -42,7 +44,14 @@ type AppAction =
   | { type: 'ADD_TASK'; payload: Task }
   | { type: 'COMPLETE_TASK'; payload: { taskId: string } }
   | { type: 'ADD_BATTLE'; payload: Battle }
+  | { type: 'ADD_QUESTION_TO_BATTLE'; payload: { battleId: string; question: BattleQuestion } }
+  | { type: 'ADD_ANSWER_TO_QUESTION'; payload: { battleId: string; questionId: string; answer: BattleAnswer } }
+  | { type: 'MARK_QUESTION_SOLVED'; payload: { battleId: string; questionId: string; solvedBy: string } }
+  | { type: 'COMPLETE_BATTLE'; payload: { battleId: string; winnerId: string } }
   | { type: 'ADD_REVIEW'; payload: Review }
+  | { type: 'ADD_PARTICIPANT_TO_BATTLE'; payload: { battleId: string; userId: string } }
+  | { type: 'RECORD_BATTLE_EVENT'; payload: { battleId: string; event: string; userId?: string; payload?: any } }
+  | { type: 'UPDATE_BATTLE_SCORE'; payload: { battleId: string; userId: string; delta: number } }
   | { type: 'UPDATE_STREAK'; payload: { userId: string; streakData: StreakData } }
   | { type: 'UPDATE_XP'; payload: { userId: string; xpData: XPData } }
   | { type: 'LOAD_STATE'; payload: AppState };
@@ -115,9 +124,175 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     }
 
     case 'ADD_BATTLE': {
+      const b = action.payload;
+      const initialized: Battle = {
+        ...b,
+        scores: b.scores ?? b.participants.reduce<Record<string, number>>((acc, id) => { acc[id] = 0; return acc; }, {}),
+        history: b.history ?? [],
+      };
+
       return {
         ...state,
-        battles: [...state.battles, action.payload],
+        battles: [...state.battles, initialized],
+      };
+    }
+    case 'ADD_PARTICIPANT_TO_BATTLE': {
+      const { battleId, userId } = action.payload;
+      return {
+        ...state,
+        battles: state.battles.map((b) =>
+          b.id === battleId
+            ? {
+                ...b,
+                participants: b.participants.includes(userId) ? b.participants : [...b.participants, userId],
+                scores: { ...(b.scores ?? {}), [userId]: (b.scores?.[userId] ?? 0) },
+                history: [
+                  ...(b.history ?? []),
+                  { id: crypto.randomUUID(), event: 'participant_added', userId, payload: {}, createdAt: new Date().toISOString() },
+                ],
+                updatedAt: new Date().toISOString(),
+              }
+            : b
+        ),
+      };
+    }
+    case 'RECORD_BATTLE_EVENT': {
+      const { battleId, event, userId, payload } = action.payload;
+      return {
+        ...state,
+        battles: state.battles.map((b) =>
+          b.id === battleId
+            ? {
+                ...b,
+                history: [
+                  ...(b.history ?? []),
+                  { id: crypto.randomUUID(), event, userId, payload, createdAt: new Date().toISOString() },
+                ],
+                updatedAt: new Date().toISOString(),
+              }
+            : b
+        ),
+      };
+    }
+    case 'UPDATE_BATTLE_SCORE': {
+      const { battleId, userId, delta } = action.payload;
+      return {
+        ...state,
+        battles: state.battles.map((b) =>
+          b.id === battleId
+            ? {
+                ...b,
+                scores: { ...(b.scores ?? {}), [userId]: (b.scores?.[userId] ?? 0) + delta },
+                history: [
+                  ...(b.history ?? []),
+                  { id: crypto.randomUUID(), event: 'score_updated', userId, payload: { delta }, createdAt: new Date().toISOString() },
+                ],
+                updatedAt: new Date().toISOString(),
+              }
+            : b
+        ),
+      };
+    }
+
+    case 'ADD_QUESTION_TO_BATTLE': {
+      const { battleId, question } = action.payload;
+      return {
+        ...state,
+        battles: state.battles.map((b) =>
+          b.id === battleId ? { ...b, questions: [...b.questions, question], updatedAt: new Date().toISOString() } : b
+        ),
+      };
+    }
+
+    case 'ADD_ANSWER_TO_QUESTION': {
+      const { battleId, questionId, answer } = action.payload;
+      return {
+        ...state,
+        battles: state.battles.map((b) =>
+          b.id === battleId
+            ? {
+                ...b,
+                questions: b.questions.map((q) =>
+                  q.id === questionId ? { ...q, answers: [...q.answers, answer], updatedAt: new Date().toISOString() } : q
+                ),
+                updatedAt: new Date().toISOString(),
+              }
+            : b
+        ),
+      };
+    }
+
+    case 'MARK_QUESTION_SOLVED': {
+      const { battleId, questionId, solvedBy } = action.payload;
+      const battle = state.battles.find((b) => b.id === battleId);
+      const question = battle?.questions.find((q) => q.id === questionId);
+
+      if (!question || question.status === 'solved') return state;
+
+      const userId = solvedBy;
+      const currentXP = state.xpData[userId] || initializeXPData(userId);
+      const updatedXP = addXPAndUpdateLevel(currentXP, question.xpReward, 1.0);
+      // update battles: mark question solved, increment solver score, and record history
+      const updatedBattles = state.battles.map((b) => {
+        if (b.id !== battleId) return b;
+        const nextScores = { ...(b.scores ?? {}) };
+        nextScores[userId] = (nextScores[userId] ?? 0) + question.xpReward;
+        const nextHistory = [
+          ...(b.history ?? []),
+          { id: crypto.randomUUID(), event: 'question_solved', userId, payload: { questionId, xp: question.xpReward }, createdAt: new Date().toISOString() },
+        ];
+
+        return {
+          ...b,
+          scores: nextScores,
+          history: nextHistory,
+          questions: b.questions.map((q) =>
+            q.id === questionId
+              ? ({ ...(q as BattleQuestion), status: 'solved' as const, solvedBy, solvedAt: new Date().toISOString() } as BattleQuestion)
+              : q
+          ),
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      return {
+        ...state,
+        battles: updatedBattles,
+        xpData: {
+          ...state.xpData,
+          [userId]: updatedXP,
+        },
+      };
+    }
+
+    case 'COMPLETE_BATTLE': {
+      const { battleId, winnerId } = action.payload;
+      const battle = state.battles.find((b) => b.id === battleId);
+      const xpStake = battle?.xpStake ?? 0;
+
+      const currentXP = state.xpData[winnerId] || initializeXPData(winnerId);
+      const updatedXP = addXPAndUpdateLevel(currentXP, xpStake, 1.0);
+
+      return {
+        ...state,
+        battles: state.battles.map((b) =>
+          b.id === battleId
+            ? {
+                ...b,
+                status: 'completed',
+                winnerId,
+                history: [
+                  ...(b.history ?? []),
+                  { id: crypto.randomUUID(), event: 'battle_completed', userId: winnerId, payload: { xpStake }, createdAt: new Date().toISOString() },
+                ],
+                updatedAt: new Date().toISOString(),
+              }
+            : b
+        ),
+        xpData: {
+          ...state.xpData,
+          [winnerId]: updatedXP,
+        },
       };
     }
 
@@ -199,12 +374,27 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const contextValue: AppContextType = {
     state,
+    currentUser: state.users.find((u) => u.id === state.currentUserId) ?? null,
     addUser: (user: User) => dispatch({ type: 'ADD_USER', payload: user }),
     setCurrentUser: (userId: string) => dispatch({ type: 'SET_CURRENT_USER', payload: userId }),
     addTask: (task: Task) => dispatch({ type: 'ADD_TASK', payload: task }),
     completeTask: (taskId: string) => dispatch({ type: 'COMPLETE_TASK', payload: { taskId } }),
     addBattle: (battle: Battle) => dispatch({ type: 'ADD_BATTLE', payload: battle }),
+    addQuestionToBattle: (battleId: string, question: BattleQuestion) =>
+      dispatch({ type: 'ADD_QUESTION_TO_BATTLE', payload: { battleId, question } }),
+    addAnswerToQuestion: (battleId: string, questionId: string, answer: BattleAnswer) =>
+      dispatch({ type: 'ADD_ANSWER_TO_QUESTION', payload: { battleId, questionId, answer } }),
+    markQuestionSolved: (battleId: string, questionId: string, solvedBy: string) =>
+      dispatch({ type: 'MARK_QUESTION_SOLVED', payload: { battleId, questionId, solvedBy } }),
+    completeBattle: (battleId: string, winnerId: string) =>
+      dispatch({ type: 'COMPLETE_BATTLE', payload: { battleId, winnerId } }),
     addReview: (review: Review) => dispatch({ type: 'ADD_REVIEW', payload: review }),
+    addParticipantToBattle: (battleId: string, userId: string) =>
+      dispatch({ type: 'ADD_PARTICIPANT_TO_BATTLE', payload: { battleId, userId } }),
+    recordBattleEvent: (battleId: string, event: string, userId?: string, payload?: any) =>
+      dispatch({ type: 'RECORD_BATTLE_EVENT', payload: { battleId, event, userId, payload } }),
+    updateBattleScore: (battleId: string, userId: string, delta: number) =>
+      dispatch({ type: 'UPDATE_BATTLE_SCORE', payload: { battleId, userId, delta } }),
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;

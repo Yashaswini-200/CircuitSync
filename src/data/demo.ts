@@ -9,14 +9,14 @@ import { saveData } from '../utils/storage';
 
 export const DEMO_USERS: User[] = [
   {
-    id: 'user-1',
-    name: 'Aditya',
+    id: 'user-yash',
+    name: 'Yashaswini',
     specialization: 'embedded',
     createdAt: new Date().toISOString(),
   },
   {
-    id: 'user-2',
-    name: 'Priya',
+    id: 'user-bhav',
+    name: 'Bhavani',
     specialization: 'vlsi',
     createdAt: new Date().toISOString(),
   },
@@ -32,7 +32,7 @@ export const DEMO_TASKS: Task[] = [
     completed: false,
     xpReward: 25,
     createdAt: new Date().toISOString(),
-    userId: 'user-1',
+    userId: 'user-yash',
   },
   {
     id: 'task-2',
@@ -44,7 +44,7 @@ export const DEMO_TASKS: Task[] = [
     xpReward: 30,
     createdAt: new Date().toISOString(),
     completedAt: new Date().toISOString(),
-    userId: 'user-1',
+    userId: 'user-yash',
   },
   {
     id: 'task-3',
@@ -55,7 +55,7 @@ export const DEMO_TASKS: Task[] = [
     completed: false,
     xpReward: 25,
     createdAt: new Date().toISOString(),
-    userId: 'user-2',
+    userId: 'user-bhav',
   },
 ];
 
@@ -75,30 +75,30 @@ export const seedDemoData = (): void => {
     users: DEMO_USERS,
     tasks: DEMO_TASKS,
     streakData: {
-      'user-1': {
-        userId: 'user-1',
-        currentStreak: 3,
-        longestStreak: 5,
-        lastActivityDate: new Date().toISOString().split('T')[0],
-        totalDaysActive: 8,
-      },
-      'user-2': {
-        userId: 'user-2',
-        currentStreak: 1,
-        longestStreak: 2,
-        lastActivityDate: new Date().toISOString().split('T')[0],
-        totalDaysActive: 3,
-      },
+      'user-yash': {
+          userId: 'user-yash',
+          currentStreak: 3,
+          longestStreak: 5,
+          lastActivityDate: new Date().toISOString().split('T')[0],
+          totalDaysActive: 8,
+        },
+        'user-bhav': {
+          userId: 'user-bhav',
+          currentStreak: 1,
+          longestStreak: 2,
+          lastActivityDate: new Date().toISOString().split('T')[0],
+          totalDaysActive: 3,
+        },
     },
     xpData: {
-      'user-1': {
-        userId: 'user-1',
+      'user-yash': {
+        userId: 'user-yash',
         totalXP: 150,
         level: 2,
         levelProgress: 50,
       },
-      'user-2': {
-        userId: 'user-2',
+      'user-bhav': {
+        userId: 'user-bhav',
         totalXP: 45,
         level: 1,
         levelProgress: 45,
@@ -106,7 +106,7 @@ export const seedDemoData = (): void => {
     },
     battles: [],
     reviews: [],
-    currentUserId: 'user-1',
+    currentUserId: 'user-yash',
   };
 
   saveData(STORAGE_KEYS.APP_STATE, demoState);
